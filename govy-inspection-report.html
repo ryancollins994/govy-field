@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Govy — Sewer Scope Field Report</title>
+<style>
+  :root{
+    --blue:#346CDB;
+    --blue-deep:#22488F;
+    --gold:#EBC061;
+    --ink:#12161F;
+    --ground:#F5F7FA;
+    --line:#DCE2EC;
+    --muted:#5A6577;
+    --white:#ffffff;
+    --radius:10px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:rgba(52,108,219,.15)}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    background:var(--ground);
+    font-size:16px;
+    line-height:1.45;
+    -webkit-text-size-adjust:100%;
+  }
+  input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit}
+
+  /* ---------- app chrome ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:var(--white);
+    border-bottom:1px solid var(--line);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom,0)*0) 16px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .wordmark{font-weight:800;letter-spacing:-.02em;font-size:20px;color:var(--blue);line-height:1}
+  .wordmark span{color:var(--ink);font-weight:600;font-size:11px;letter-spacing:.08em;display:block;margin-top:2px}
+  .tabs{margin-left:auto;display:flex;background:var(--ground);border-radius:8px;padding:3px;gap:2px}
+  .tabs button{
+    border:0;background:transparent;padding:8px 14px;border-radius:6px;
+    font-weight:600;font-size:14px;color:var(--muted);cursor:pointer
+  }
+  .tabs button[aria-selected="true"]{background:var(--white);color:var(--ink);box-shadow:0 1px 2px rgba(18,22,31,.12)}
+
+  main{padding:16px 16px 140px;max-width:760px;margin:0 auto}
+
+  .card{
+    background:var(--white);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin-bottom:14px;
+  }
+  .card > h2{
+    margin:0 0 14px;font-size:15px;font-weight:700;letter-spacing:-.01em;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card > h2::before{content:"";width:3px;height:15px;background:var(--gold);border-radius:2px;flex:none}
+
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:0 0 5px}
+  .field{margin-bottom:13px}
+  .field:last-child{margin-bottom:0}
+  input[type=text],input[type=date],input[type=number],input[type=url],input[type=time],select,textarea{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--white);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:var(--blue)}
+  textarea{min-height:84px;resize:vertical;line-height:1.5}
+  .row{display:flex;gap:10px}
+  .row > *{flex:1;min-width:0}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{
+    border:1px solid var(--line);background:var(--white);border-radius:999px;
+    padding:9px 13px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)
+  }
+  .chip[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    border:1px solid var(--blue);background:var(--blue);color:#fff;
+    padding:13px 16px;border-radius:9px;font-weight:700;cursor:pointer;
+  }
+  .btn.ghost{background:var(--white);color:var(--blue)}
+  .btn.quiet{background:var(--white);color:var(--ink);border-color:var(--line)}
+  .btn.full{width:100%}
+  .btn:active{transform:translateY(1px)}
+
+  .actionbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(8px);
+    border-top:1px solid var(--line);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom,0));
+    display:flex;gap:10px;
+  }
+  .actionbar .btn{flex:1;padding:14px 10px}
+
+  /* ---------- findings ---------- */
+  .finding{
+    border:1px solid var(--line);border-left:4px solid var(--blue);
+    border-radius:8px;padding:12px;margin-bottom:10px;background:var(--white)
+  }
+  .finding.sev-monitor{border-left-color:#C9A227}
+  .finding.sev-notable{border-left-color:#D9822B}
+  .finding.sev-significant{border-left-color:#C0392B}
+  .finding.sev-normal{border-left-color:#3E8E5A}
+  .finding-head{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+  .finding-head strong{font-size:15px;flex:1}
+  .finding-head .ft{font-variant-numeric:tabular-nums;font-weight:700;color:var(--blue-deep);font-size:14px}
+  .del{border:0;background:transparent;color:var(--muted);font-size:13px;font-weight:600;padding:4px;cursor:pointer;text-decoration:underline}
+  .thumb{margin-top:9px}
+  .thumb img{max-width:100%;border-radius:6px;display:block;border:1px solid var(--line)}
+  .empty{color:var(--muted);font-size:14px;padding:12px;border:1px dashed var(--line);border-radius:8px;text-align:center}
+
+  .hint{font-size:13px;color:var(--muted);margin:8px 0 0;line-height:1.45}
+  .toast{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:50;
+    background:var(--ink);color:#fff;padding:11px 16px;border-radius:8px;font-size:14px;font-weight:600;
+    opacity:0;pointer-events:none;transition:opacity .18s
+  }
+  .toast.show{opacity:1}
+  .joblist button{
+    width:100%;text-align:left;border:1px solid var(--line);background:var(--white);
+    border-radius:8px;padding:11px 12px;margin-bottom:8px;cursor:pointer;line-height:1.35
+  }
+  .joblist small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+
+  /* ---------- report ---------- */
+  .report{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:26px 22px;color:var(--ink)}
+  .rep-head{border-bottom:2px solid var(--blue);padding-bottom:14px;margin-bottom:18px}
+  .rep-head .mark{font-weight:800;font-size:26px;color:var(--blue);letter-spacing:-.02em;line-height:1}
+  .rep-head .mark em{font-style:normal;color:var(--gold)}
+  .rep-head .sub{font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--ink);margin-top:3px}
+  .rep-title{font-size:17px;font-weight:700;margin:14px 0 2px}
+  .rep-addr{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;line-height:1.2}
+  .rep-date{color:var(--muted);font-size:14px}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin:18px 0 22px}
+  .meta div{border-top:1px solid var(--line);padding-top:7px}
+  .meta dt{font-size:12px;color:var(--muted);font-weight:600;margin:0}
+  .meta dd{margin:2px 0 0;font-weight:600;font-size:15px;word-break:break-word}
+  .rep h3{
+    font-size:13px;font-weight:700;letter-spacing:.04em;margin:24px 0 10px;
+    padding-bottom:6px;border-bottom:1px solid var(--line)
+  }
+  .rf{border-left:4px solid var(--blue);padding:2px 0 2px 12px;margin:0 0 16px;page-break-inside:avoid}
+  .rf.sev-monitor{border-left-color:#C9A227}
+  .rf.sev-notable{border-left-color:#D9822B}
+  .rf.sev-significant{border-left-color:#C0392B}
+  .rf.sev-normal{border-left-color:#3E8E5A}
+  .rf h4{margin:0;font-size:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+  .rf .ft{font-variant-numeric:tabular-nums;color:var(--blue-deep)}
+  .rf .sev{font-size:12px;font-weight:700;color:var(--muted)}
+  .rf p{margin:5px 0 0;font-size:15px;line-height:1.5}
+  .rf .jump{font-size:14px;font-weight:600}
+  .rf .jump a{color:var(--blue);text-decoration:none;border-bottom:1.5px solid var(--gold);padding-bottom:1px}
+  .rf img{max-width:100%;margin-top:9px;border:1px solid var(--line);border-radius:5px;display:block}
+  .key{font-size:13.5px;line-height:1.6;color:var(--ink);background:var(--ground);border-radius:8px;padding:12px 14px}
+  .key b{font-weight:700}
+  .limits{font-size:13px;line-height:1.55;color:var(--muted)}
+  .limits li{margin-bottom:5px}
+  .rep-foot{margin-top:26px;border-top:2px solid var(--blue);padding-top:12px;font-size:13.5px;line-height:1.6}
+  .rep-foot b{color:var(--blue)}
+  .vid a{color:var(--blue);font-weight:700;word-break:break-all}
+
+  @media (min-width:620px){ .meta{grid-template-columns:repeat(3,1fr)} }
+
+  /* ---------- print ---------- */
+  @media print{
+    body{background:#fff;font-size:11.5pt}
+    .topbar,.actionbar,.toast,#view-form,#view-plan,.noprint{display:none !important}
+    main{padding:0;max-width:none}
+    .report{border:0;border-radius:0;padding:0}
+    .rf,.meta div{page-break-inside:avoid}
+    a{text-decoration:none}
+    @page{margin:14mm}
+    /* Per-page identification comes from Chrome's own print header, which
+       prints the document title — set per property in setDocTitle(). */
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wordmark">Govy<span>HOME SERVICES</span></div>
+  <div class="tabs" role="tablist">
+    <button id="tab-form" role="tab" aria-selected="true" onclick="showView('form')">Inspection</button>
+    <button id="tab-report" role="tab" aria-selected="false" onclick="showView('report')">Report</button>
+    <button id="tab-plan" role="tab" aria-selected="false" onclick="showView('plan')">Day</button>
+  </div>
+</div>
+
+<main>
+  <!-- ============ FORM VIEW ============ -->
+  <div id="view-form">
+
+    <div class="card">
+      <h2>Job</h2>
+      <div class="field">
+        <label for="m-address">Property address</label>
+        <input type="text" id="m-address" data-meta="address" placeholder="1234 Maple St, Royal Oak, MI">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="m-date">Date</label>
+          <input type="date" id="m-date" data-meta="date">
+        </div>
+        <div class="field">
+          <label for="m-county">County</label>
+          <select id="m-county" data-meta="county">
+            <option value="">—</option>
+            <option>Oakland</option><option>Macomb</option><option>Wayne</option>
+            <option>Washtenaw</option><option>Livingston</option><option>St. Clair</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="m-client">Report prepared for</label>
+        <input type="text" id="m-client" data-meta="client" placeholder="Client or agent name">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="m-email">Their email</label>
+          <input type="text" id="m-email" data-meta="email" inputmode="email" autocapitalize="off" placeholder="name@email.com">
+        </div>
+        <div class="field">
+          <label for="m-phone">Their phone</label>
+          <input type="text" id="m-phone" data-meta="phone" inputmode="tel" placeholder="(248) 555-0134">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="m-role">Their role</label>
+          <select id="m-role" data-meta="role">
+            <option value="">—</option>
+            <option>Real Estate Agent</option><option>Home Inspector</option>
+            <option>Homebuyer</option><option>Homeowner</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="m-year">Year built</label>
+          <input type="text" id="m-year" data-meta="year" inputmode="numeric" placeholder="Optional">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>The line</h2>
+      <div class="field">
+        <label for="m-access">Access point</label>
+        <select id="m-access" data-meta="access">
+          <option>Exterior cleanout</option>
+          <option>Interior cleanout</option>
+          <option>Cleanout not accessible — inspection not performed</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Pipe material observed</label>
+        <div class="chips" id="materials"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="m-footage">Footage scoped</label>
+          <input type="number" id="m-footage" data-meta="footage" inputmode="numeric" placeholder="ft">
+        </div>
+        <div class="field">
+          <label for="m-diameter">Diameter</label>
+          <select id="m-diameter" data-meta="diameter">
+            <option value="">—</option>
+            <option>3 in</option><option>4 in</option><option>6 in</option><option>Varies</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="m-main">Camera reached the city main</label>
+        <select id="m-main" data-meta="main">
+          <option>Yes</option>
+          <option>No</option>
+          <option>Unable to confirm</option>
+          <option>Not applicable — septic</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="m-mainnote">If no, where it stopped and why</label>
+        <input type="text" id="m-mainnote" data-meta="mainnote" placeholder="e.g. heavy roots at 46 ft, camera would not pass">
+      </div>
+      <div class="field">
+        <label for="m-flow">Water run during the scope</label>
+        <select id="m-flow" data-meta="flow">
+          <option>Yes — flow observed</option>
+          <option>No</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Findings</h2>
+      <div class="field">
+        <label>Tap what you saw</label>
+        <div class="chips" id="preset-chips"></div>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="margin-bottom:0">
+          <label for="n-footage">At footage</label>
+          <input type="number" id="n-footage" inputmode="numeric" placeholder="ft">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="n-time">Video time</label>
+          <input type="text" id="n-time" inputmode="numeric" placeholder="2:14">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="n-sev">Severity</label>
+          <select id="n-sev">
+            <option>Monitor</option><option>Notable</option><option>Significant</option><option>Normal</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="n-note">What it looks like</label>
+        <textarea id="n-note" placeholder="Plain description of what the camera shows. No repair advice."></textarea>
+      </div>
+      <div class="field">
+        <label for="n-photo">Still frame (optional)</label>
+        <input type="file" id="n-photo" accept="image/*" capture="environment">
+      </div>
+      <button class="btn full" onclick="addFinding()">Add finding</button>
+
+      <div class="field" style="margin-top:18px">
+        <label for="bulk">Or paste findings from your recording</label>
+        <textarea id="bulk" placeholder="32 | Offset joint | Notable | minor separation, light infiltration
+46 | Root intrusion | Significant | fine roots across the joint, partial flow restriction"></textarea>
+      </div>
+      <button class="btn quiet full" onclick="addBulk()">Add these findings</button>
+      <p class="hint">One per line: footage, condition, severity, note — separated by <b>|</b>. Anything you leave off is filled in with a sensible default.</p>
+
+      <div id="finding-list" style="margin-top:14px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Summary &amp; video</h2>
+      <div class="field">
+        <label for="m-summary">Overall condition</label>
+        <textarea id="m-summary" data-meta="summary" placeholder="Two or three sentences describing the line as a whole."></textarea>
+      </div>
+      <div class="field">
+        <label for="m-video">Video link (Google Drive)</label>
+        <input type="url" id="m-video" data-meta="video" placeholder="https://drive.google.com/...">
+      </div>
+      <div class="field">
+        <label for="m-reportUrl">Report PDF link (optional)</label>
+        <input type="url" id="m-reportUrl" data-meta="reportUrl" placeholder="https://drive.google.com/...">
+      </div>
+      <p class="hint">Set the Drive folder to “anyone with the link can view” once, and everything you drop in it inherits that. Otherwise the client gets a request-access screen instead of their video.</p>
+    </div>
+
+    <div class="card">
+      <h2>Send to client</h2>
+      <p class="hint" style="margin:0 0 12px">This hands the job to GoHighLevel: it updates the contact, stores both links, and moves the opportunity to Report Delivered, which is what fires the delivery email and the review ask. You don’t write anything.</p>
+      <div class="field">
+        <label for="hook-url">Report Delivered webhook URL</label>
+        <input type="url" id="hook-url" inputmode="url" autocapitalize="off" autocomplete="off" placeholder="https://services.leadconnectorhq.com/hooks/...">
+        <p class="hint" style="margin-top:6px">Entered once per device and kept only on this phone — never saved into the file, so the hosted page carries no secret.</p>
+      </div>
+      <button class="btn quiet full" style="margin-bottom:10px" onclick="saveHook()">Save webhook</button>
+      <button class="btn full" id="send-btn" onclick="sendReport()">Send report</button>
+      <div id="send-status" class="hint"></div>
+    </div>
+
+    <div class="card">
+      <h2>Saved inspections</h2>
+      <div class="joblist" id="joblist"></div>
+      <button class="btn quiet full" onclick="newJob()">Start a new inspection</button>
+    </div>
+  </div>
+
+  <!-- ============ REPORT VIEW ============ -->
+  <div id="view-report" hidden>
+    <div class="report rep" id="report"></div>
+  </div>
+  <!-- ============ DAY PLAN VIEW ============ -->
+  <div id="view-plan" hidden>
+    <div class="card">
+      <h2>Add a stop</h2>
+      <div class="field">
+        <label for="p-address">Address</label>
+        <input type="text" id="p-address" placeholder="1234 Maple St">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="p-city">City</label>
+          <input type="text" id="p-city" list="city-list" placeholder="Royal Oak" autocapitalize="words">
+          <datalist id="city-list"></datalist>
+        </div>
+        <div class="field">
+          <label for="p-window">Fixed window</label>
+          <input type="text" id="p-window" placeholder="10:00 or blank">
+        </div>
+      </div>
+      <button class="btn full" onclick="addStop()">Add stop</button>
+      <p class="hint">A fixed window means the inspection is already scheduled and that stop can’t move. Leave it blank and the stop gets placed wherever it fits best.</p>
+    </div>
+
+    <div class="card">
+      <h2>The day</h2>
+      <div id="stop-list"></div>
+      <div id="plan-stats" class="hint"></div>
+    </div>
+  </div>
+
+</main>
+
+<datalist id="dummy"></datalist>
+
+<div class="actionbar" id="bar-form">
+  <button class="btn ghost" onclick="copySummary()">Copy for GHL</button>
+  <button class="btn" onclick="showView('report')">See report</button>
+</div>
+<div class="actionbar" id="bar-report" hidden>
+  <button class="btn quiet" onclick="showView('form')">Back to notes</button>
+  <button class="btn" onclick="window.print()">Save as PDF</button>
+</div>
+
+<div class="actionbar" id="bar-plan" hidden>
+  <button class="btn quiet" onclick="orderDay()">Order the day</button>
+  <button class="btn" onclick="openMaps()">Open in Maps</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+var PRESETS = [
+  "Root intrusion","Bellied line / standing water","Offset joint","Separated joint",
+  "Crack or fracture","Scale / mineral buildup","Grease or soft blockage","Debris / foreign object",
+  "Corrosion / channeling","Material transition","Previous repair","Infiltration",
+  "Deformed or collapsed section","Improper connection","Clear run — no defects"
+];
+var MATERIALS = ["Clay","Cast iron","PVC","ABS","Orangeburg","Concrete","Unknown"];
+
+var SEV_NOTE = {
+  "Normal":"consistent with the age and material of the line",
+  "Monitor":"worth knowing about, not affecting flow today",
+  "Notable":"affecting the line now and worth a licensed plumber's opinion",
+  "Significant":"substantial, and the footage should be reviewed before closing"
+};
+
+var KEY = "govy.jobs.v1";
+var state = blank();
+var selectedPreset = null;
+var pendingPhoto = null;
+
+function blank(){
+  var d = new Date();
+  var iso = d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  return {
+    id:"job_"+Date.now(),
+    address:"", date:iso, county:"", client:"", email:"", phone:"", role:"", year:"",
+    reportUrl:"", sentAt:null,
+    access:"Exterior cleanout", materials:[], footage:"", diameter:"",
+    main:"Yes", mainnote:"", flow:"Yes — flow observed",
+    findings:[], summary:"", video:""
+  };
+}
+function pad(n){ return n<10 ? "0"+n : ""+n; }
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];
+  });
+}
+function toast(msg){
+  var t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove("show");},1900);
+}
+
+/* ---------- storage (silently no-ops if unavailable) ---------- */
+function loadAll(){
+  try{ return JSON.parse(localStorage.getItem(KEY)) || []; }catch(e){ return []; }
+}
+function save(){
+  try{
+    var all = loadAll().filter(function(j){ return j.id !== state.id; });
+    all.unshift(state);
+    all = all.slice(0,25);
+    try{
+      localStorage.setItem(KEY, JSON.stringify(all));
+    }catch(quota){
+      var lean = all.map(function(j){
+        return Object.assign({}, j, {findings:(j.findings||[]).map(function(f){
+          return Object.assign({}, f, {photo:null});
+        })});
+      });
+      localStorage.setItem(KEY, JSON.stringify(lean));
+    }
+  }catch(e){ /* preview sandbox — drafts just aren't kept */ }
+  renderJobs();
+}
+
+/* ---------- form wiring ---------- */
+function bindMeta(){
+  var els = document.querySelectorAll("[data-meta]");
+  Array.prototype.forEach.call(els, function(el){
+    el.addEventListener("input", function(){
+      state[el.getAttribute("data-meta")] = el.value;
+      save();
+    });
+  });
+}
+function fillMeta(){
+  var els = document.querySelectorAll("[data-meta]");
+  Array.prototype.forEach.call(els, function(el){
+    el.value = state[el.getAttribute("data-meta")] || "";
+  });
+  renderMaterials(); renderFindings(); renderJobs(); renderSend();
+}
+
+function renderMaterials(){
+  var wrap = document.getElementById("materials");
+  wrap.innerHTML = "";
+  MATERIALS.forEach(function(m){
+    var b = document.createElement("button");
+    b.type="button"; b.className="chip"; b.textContent=m;
+    b.setAttribute("aria-pressed", state.materials.indexOf(m)>-1 ? "true":"false");
+    b.onclick = function(){
+      var i = state.materials.indexOf(m);
+      if(i>-1){ state.materials.splice(i,1); } else { state.materials.push(m); }
+      renderMaterials(); save();
+    };
+    wrap.appendChild(b);
+  });
+}
+
+function renderPresets(){
+  var wrap = document.getElementById("preset-chips");
+  wrap.innerHTML = "";
+  PRESETS.forEach(function(p){
+    var b = document.createElement("button");
+    b.type="button"; b.className="chip"; b.textContent=p;
+    b.setAttribute("aria-pressed", selectedPreset===p ? "true":"false");
+    b.onclick = function(){
+      selectedPreset = (selectedPreset===p) ? null : p;
+      renderPresets();
+    };
+    wrap.appendChild(b);
+  });
+}
+
+document.getElementById("n-photo").addEventListener("change", function(e){
+  var file = e.target.files && e.target.files[0];
+  if(!file) { pendingPhoto = null; return; }
+  shrink(file, function(dataUrl){ pendingPhoto = dataUrl; toast("Photo attached"); });
+});
+
+function shrink(file, cb){
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var img = new Image();
+    img.onload = function(){
+      var max = 1100;
+      var w = img.width, h = img.height;
+      if(w>max || h>max){ var r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
+      var c = document.createElement("canvas");
+      c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      cb(c.toDataURL("image/jpeg", .72));
+    };
+    img.onerror = function(){ cb(ev.target.result); };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+window.addFinding = function(){
+  var note = document.getElementById("n-note").value.trim();
+  if(!selectedPreset && !note){ toast("Pick a condition or write a note first"); return; }
+  state.findings.push({
+    id: "f_"+Date.now(),
+    type: selectedPreset || "Observation",
+    footage: document.getElementById("n-footage").value,
+    time: document.getElementById("n-time").value.trim(),
+    severity: document.getElementById("n-sev").value,
+    note: note,
+    photo: pendingPhoto
+  });
+  state.findings.sort(function(a,b){ return (parseFloat(a.footage)||0) - (parseFloat(b.footage)||0); });
+  selectedPreset = null; pendingPhoto = null;
+  document.getElementById("n-note").value = "";
+  document.getElementById("n-footage").value = "";
+  document.getElementById("n-time").value = "";
+  document.getElementById("n-photo").value = "";
+  renderPresets(); renderFindings(); save();
+  toast("Finding added");
+};
+
+function sevClass(s){ return "sev-"+String(s||"").toLowerCase(); }
+
+function renderFindings(){
+  var wrap = document.getElementById("finding-list");
+  if(!state.findings.length){
+    wrap.innerHTML = '<div class="empty">Nothing recorded yet. Add findings as you go — they sort themselves by footage.</div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.findings.forEach(function(f){
+    var d = document.createElement("div");
+    d.className = "finding "+sevClass(f.severity);
+    d.innerHTML =
+      '<div class="finding-head">'+
+        '<span class="ft">'+(f.footage!=="" && f.footage!=null ? esc(f.footage)+" ft" : "—")+'</span>'+
+        '<strong>'+esc(f.type)+(f.time ? ' <span style="color:#5A6577;font-weight:600">'+esc(f.time)+'</span>' : '')+'</strong>'+
+        '<button class="del" data-del="'+f.id+'">Remove</button>'+
+      '</div>'+
+      (f.note ? '<div style="font-size:14.5px">'+esc(f.note)+'</div>' : '')+
+      (f.photo ? '<div class="thumb"><img src="'+f.photo+'" alt=""></div>' : '');
+    wrap.appendChild(d);
+  });
+  Array.prototype.forEach.call(wrap.querySelectorAll("[data-del]"), function(b){
+    b.onclick = function(){
+      var id = b.getAttribute("data-del");
+      state.findings = state.findings.filter(function(x){ return x.id!==id; });
+      renderFindings(); save();
+    };
+  });
+}
+
+function renderJobs(){
+  var all = loadAll();
+  var wrap = document.getElementById("joblist");
+  if(!all.length){ wrap.innerHTML = '<div class="empty">Saved inspections will show up here.</div>'; return; }
+  wrap.innerHTML = "";
+  all.forEach(function(j){
+    var b = document.createElement("button");
+    b.innerHTML = "<strong>"+esc(j.address || "Untitled inspection")+"</strong>"+
+                  "<small>"+esc(j.date||"")+" · "+(j.findings? j.findings.length:0)+" findings"+
+                  (j.id===state.id ? " · open now" : "")+"</small>";
+    b.onclick = function(){ state = j; fillMeta(); toast("Loaded"); window.scrollTo(0,0); };
+    wrap.appendChild(b);
+  });
+}
+
+window.newJob = function(){
+  state = blank(); selectedPreset=null; pendingPhoto=null;
+  fillMeta(); renderPresets(); save();
+  window.scrollTo(0,0); toast("New inspection started");
+};
+
+/* ---------- views ---------- */
+window.addBulk = function(){
+  var raw = document.getElementById("bulk").value;
+  var lines = raw.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+  if(!lines.length){ toast("Nothing to add"); return; }
+  var SEVS = ["Normal","Monitor","Notable","Significant"];
+  var TIME = /\b(\d{1,2}:\d{2}(?::\d{2})?)\b/;
+  var added = 0;
+
+  lines.forEach(function(line){
+    var parts = line.split("|").map(function(p){ return p.trim(); });
+    var footage = "", type = "", severity = "", note = "", time = "";
+
+    if(parts.length > 1){
+      footage = (parts[0].match(/[\d.]+/) || [""])[0];
+      type = parts[1] || "Observation";
+      var rest = parts.slice(2);
+      rest.forEach(function(p){
+        var hit = SEVS.filter(function(s){ return s.toLowerCase() === p.toLowerCase(); })[0];
+        var tm = p.match(TIME);
+        if(hit && !severity){ severity = hit; }
+        else if(tm && tm[0] === p && !time){ time = tm[1]; }
+        else if(p){
+          if(tm && !time){ time = tm[1]; p = p.replace(TIME,"").trim(); }
+          if(p) note = note ? note+" "+p : p;
+        }
+      });
+    } else {
+      var tm2 = line.match(TIME);
+      if(tm2){ time = tm2[1]; line = line.replace(TIME,"").trim(); }
+      var m = line.match(/^([\d.]+)\s*(?:ft|feet|')?\s*[-–:,]?\s*(.*)$/i);
+      if(m){ footage = m[1]; line = m[2]; }
+      SEVS.forEach(function(s){
+        var re = new RegExp("\\b"+s+"\\b","i");
+        if(re.test(line) && !severity){ severity = s; line = line.replace(re,"").trim(); }
+      });
+      var bits = line.split(/[,;]/);
+      type = (bits.shift() || "Observation").trim();
+      note = bits.join(",").trim();
+    }
+
+    if(!type) type = "Observation";
+    if(!severity) severity = "Monitor";
+    state.findings.push({
+      id:"f_"+Date.now()+"_"+added,
+      type: type.charAt(0).toUpperCase()+type.slice(1),
+      footage: footage, time: time, severity: severity,
+      note: note.replace(/^[-–:,\s]+/,""), photo: null
+    });
+    added++;
+  });
+
+  state.findings.sort(function(a,b){ return (parseFloat(a.footage)||0) - (parseFloat(b.footage)||0); });
+  document.getElementById("bulk").value = "";
+  renderFindings(); save();
+  toast(added+(added===1 ? " finding added" : " findings added"));
+};
+
+/* ---------- video timestamps ---------- */
+function toSeconds(t){
+  if(!t) return null;
+  var p = String(t).trim().split(":").map(Number);
+  if(p.some(isNaN)) return null;
+  if(p.length===3) return p[0]*3600 + p[1]*60 + p[2];
+  if(p.length===2) return p[0]*60 + p[1];
+  if(p.length===1) return p[0];
+  return null;
+}
+function youtubeId(url){
+  if(!url) return null;
+  var s = String(url).trim();
+  // A bare 11-character video id is enough — quicker to type off the laptop
+  // screen than moving a whole URL between devices.
+  if(/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  var m = s.match(/(?:youtu\.be\/|[?&]v=|youtube\.com\/(?:embed|live|shorts)\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+/* A bare id typed into the video field becomes a real link everywhere it
+   is used — report, GHL note, and the payload sent to the workflow. */
+function videoUrl(){
+  var raw = (state.video||"").trim();
+  if(!raw) return "";
+  if(/^[A-Za-z0-9_-]{11}$/.test(raw)) return "https://youtu.be/"+raw;
+  return raw;
+}
+function stampLink(time){
+  var id = youtubeId(state.video), secs = toSeconds(time);
+  if(!id || secs===null) return null;
+  return "https://youtu.be/"+id+"?t="+secs;
+}
+
+window.showView = function(v){
+  ["form","report","plan"].forEach(function(name){
+    document.getElementById("view-"+name).hidden = (name!==v);
+    document.getElementById("bar-"+name).hidden = (name!==v);
+    document.getElementById("tab-"+name).setAttribute("aria-selected", name===v ? "true":"false");
+  });
+  if(v==="report"){ renderReport(); setDocTitle(); }
+  else { document.title = "Govy — Sewer Scope Field Report"; }
+  if(v==="plan") renderStops();
+  window.scrollTo(0,0);
+};
+
+/* The browser names the saved PDF after the document title, so set it to
+   something that files itself: "Sewer Scope — 1234 Maple St — 2026-11-05". */
+function setDocTitle(){
+  var street = (state.address||"").split(",")[0].trim().replace(/[\\/:*?"<>|]/g,"");
+  document.title = "Sewer Scope" + (street ? " — "+street : "") + (state.date ? " — "+state.date : "");
+}
+
+function longDate(iso){
+  if(!iso) return "";
+  var p = iso.split("-");
+  var d = new Date(+p[0], +p[1]-1, +p[2]);
+  return d.toLocaleDateString("en-US",{month:"long", day:"numeric", year:"numeric"});
+}
+
+function renderReport(){
+  var s = state;
+  var sevUsed = {};
+  s.findings.forEach(function(f){ sevUsed[f.severity]=true; });
+
+  var meta = [
+    ["Inspection date", longDate(s.date)],
+    ["County", s.county],
+    ["Prepared for", s.client + (s.role ? " ("+s.role+")" : "")],
+    ["Access point", s.access],
+    ["Pipe material", s.materials.join(", ")],
+    ["Line diameter", s.diameter],
+    ["Footage scoped", s.footage ? s.footage+" ft" : ""],
+    ["Reached city main", s.main + (s.main!=="Yes" && s.mainnote ? " — "+s.mainnote : "")],
+    ["Water run during scope", s.flow],
+    ["Year built", s.year]
+  ].filter(function(r){ return r[1] && String(r[1]).trim() && String(r[1]).trim()!=="()"; });
+
+  var html = "";
+  html += '<div class="rep-head">'+
+            '<div class="mark">Go<em>v</em>y</div>'+
+            '<div class="sub">HOME SERVICES</div>'+
+          '</div>';
+  html += '<div class="rep-title">Sewer scope inspection report</div>';
+  html += '<h1 class="rep-addr">'+esc(s.address || "Property address")+'</h1>';
+  html += '<div class="rep-date">'+esc(longDate(s.date))+' · Inspected by Ryan Collins, Certified Sewer Scope Inspector (InterNACHI)</div>';
+
+  html += '<dl class="meta">';
+  meta.forEach(function(r){
+    html += '<div><dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd></div>';
+  });
+  html += '</dl>';
+
+  if(s.summary){
+    html += '<h3>Overall condition</h3><p style="font-size:15.5px;line-height:1.55;margin:0">'+esc(s.summary)+'</p>';
+  }
+
+  html += '<h3>What the camera showed</h3>';
+  if(!s.findings.length){
+    html += '<p style="font-size:15px;color:#5A6577;margin:0">No findings recorded.</p>';
+  } else {
+    s.findings.forEach(function(f){
+      var link = stampLink(f.time);
+      html += '<div class="rf '+sevClass(f.severity)+'">'+
+                '<h4>'+
+                  (f.footage!=="" && f.footage!=null ? '<span class="ft">'+esc(f.footage)+' ft</span>' : '')+
+                  '<span>'+esc(f.type)+'</span>'+
+                  '<span class="sev">'+esc(f.severity)+'</span>'+
+                '</h4>'+
+                (f.note ? '<p>'+esc(f.note)+'</p>' : '')+
+                (link ? '<p class="jump"><a href="'+esc(link)+'">Watch this at '+esc(f.time)+'</a></p>'
+                      : (f.time ? '<p class="jump">In the video at '+esc(f.time)+'</p>' : ''))+
+                (f.photo ? '<img src="'+f.photo+'" alt="Still frame at '+esc(f.footage)+' ft">' : '')+
+              '</div>';
+    });
+    var keyRows = Object.keys(SEV_NOTE).filter(function(k){ return sevUsed[k]; });
+    if(keyRows.length){
+      html += '<div class="key">';
+      keyRows.forEach(function(k){ html += '<div><b>'+k+'</b> — '+SEV_NOTE[k]+'</div>'; });
+      html += '</div>';
+    }
+  }
+
+  html += '<h3>Your video</h3>';
+  html += '<div class="vid" style="font-size:15px;line-height:1.55">'+
+          '<p style="margin:0 0 6px">The complete inspection video is uncut, from the cleanout to the main. '+
+          'Each finding above links straight to the moment it appears, so you can see it for yourself rather than take our word for it.</p>'+
+          (s.video ? '<a href="'+esc(videoUrl())+'">'+esc(videoUrl())+'</a>'
+                   : '<span style="color:#5A6577">Video link to be added.</span>')+
+          '</div>';
+
+  html += '<h3>What this inspection covers</h3>';
+  html += '<ul class="limits">'+
+    '<li>Govy performs sewer scope inspections only. We do not perform repairs, cleaning, rooter work or excavation, and we have no arrangement with anyone who does.</li>'+
+    '<li>This is not a home inspection and not a plumbing inspection. It covers the sewer line reachable by camera from the cleanout.</li>'+
+    '<li>A camera shows the inside of the line at one moment in time. It cannot assess the outside of the pipe, the surrounding soil, or how the line will perform in future.</li>'+
+    '<li>Sections beyond a blockage, a hard bend or a point the camera could not pass were not viewed, and nothing is stated about them.</li>'+
+    '<li>Findings describe what was seen. Any decision about repair belongs to you and a licensed plumber of your choosing.</li>'+
+  '</ul>';
+
+  html += '<div class="rep-foot">'+
+    '<b>Govy Home Services</b> — sewer scope inspections across Oakland, Macomb, Wayne, Washtenaw, Livingston and St. Clair counties.<br>'+
+    '(313) 450-9588 · hello@govyservices.com · govyservices.com<br>'+
+    'A DBA of Own The Roof Inc.'+
+  '</div>';
+
+  document.getElementById("report").innerHTML = html;
+}
+
+/* ---------- copy for GHL ---------- */
+window.copySummary = function(){
+  var s = state;
+  var lines = [];
+  lines.push("SEWER SCOPE — "+(s.address||"(no address)"));
+  lines.push(longDate(s.date)+(s.county? " · "+s.county+" County":""));
+  if(s.client) lines.push("For: "+s.client+(s.role? " ("+s.role+")":""));
+  lines.push("Access: "+s.access+(s.materials.length? " · "+s.materials.join("/"):"")+
+             (s.footage? " · "+s.footage+" ft scoped":"")+" · Main reached: "+s.main+
+             (s.main!=="Yes"&&s.mainnote? " ("+s.mainnote+")":""));
+  lines.push("");
+  if(s.summary){ lines.push(s.summary); lines.push(""); }
+  if(s.findings.length){
+    lines.push("Findings:");
+    s.findings.forEach(function(f){
+      var link = stampLink(f.time);
+      lines.push("- "+(f.footage!==""? f.footage+" ft: ":"")+f.type+" ["+f.severity+"]"+
+                 (f.note? " — "+f.note:"")+(link? " "+link : (f.time? " ("+f.time+")":"")));
+    });
+    lines.push("");
+  }
+  if(s.video) lines.push("Video: "+videoUrl());
+  var text = lines.join("\n");
+
+  function done(){ toast("Copied"); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallback(text); });
+  } else { fallback(text); }
+  function fallback(t){
+    var ta=document.createElement("textarea");
+    ta.value=t; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); done(); }catch(e){ toast("Select and copy manually"); }
+    document.body.removeChild(ta);
+  }
+};
+
+/* ---------- send to GoHighLevel ----------
+   The webhook URL is entered once in the app and kept in this device's
+   browser storage — deliberately NOT written into this file, which is
+   served publicly wherever it is hosted. */
+var HOOK_KEY = "govy.webhook.v1";
+function getHook(){
+  try{ return localStorage.getItem(HOOK_KEY) || ""; }catch(e){ return ""; }
+}
+window.saveHook = function(){
+  var v = document.getElementById("hook-url").value.trim();
+  if(v && !/^https:\/\//i.test(v)){ toast("That should start with https://"); return; }
+  try{
+    if(v) localStorage.setItem(HOOK_KEY, v); else localStorage.removeItem(HOOK_KEY);
+    toast(v ? "Webhook saved on this device" : "Webhook cleared");
+  }catch(e){ toast("This browser won’t store it — sending stays off"); }
+  renderSend();
+};
+
+function findingsText(){
+  return state.findings.map(function(f){
+    return (f.footage!==""&&f.footage!=null ? f.footage+" ft: " : "")+
+           f.type+" ["+f.severity+"]"+(f.note ? " — "+f.note : "");
+  }).join("\n");
+}
+function worstSeverity(){
+  var rank = ["Normal","Monitor","Notable","Significant"], worst = "";
+  state.findings.forEach(function(f){
+    if(rank.indexOf(f.severity) > rank.indexOf(worst)) worst = f.severity;
+  });
+  return worst;
+}
+function setSend(msg, busy){
+  var el = document.getElementById("send-status");
+  var btn = document.getElementById("send-btn");
+  el.innerHTML = msg || "";
+  btn.disabled = !!busy;
+  btn.style.opacity = busy ? ".55" : "1";
+}
+function renderSend(){
+  var btn = document.getElementById("send-btn");
+  var hookInput = document.getElementById("hook-url");
+  if(hookInput && !hookInput.value) hookInput.value = getHook();
+  if(state.sentAt){
+    var t = new Date(state.sentAt);
+    btn.textContent = "Send again";
+    setSend("Sent "+t.toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})+".", false);
+  } else {
+    btn.textContent = "Send report";
+    setSend("", false);
+  }
+}
+
+window.sendReport = function(){
+  var s = state, hook = getHook();
+  if(!hook){
+    setSend("Not connected yet. Paste the Report Delivered webhook URL in the box above and save it — it stays on this device.", false);
+    return;
+  }
+  if(!s.email && !s.phone){ setSend("Add the client’s email or phone first — GoHighLevel needs one to find the contact.", false); return; }
+  if(!s.video){ setSend("Add the video link first. Everything else is ready.", false); return; }
+
+  var name = (s.client||"").trim().split(/\s+/);
+  var payload = {
+    event:"report_ready",
+    first_name: name[0] || "",
+    last_name: name.slice(1).join(" "),
+    full_name: s.client,
+    email: s.email,
+    phone: s.phone,
+    role: s.role,
+    property_address: s.address,
+    county: s.county,
+    inspection_date: s.date,
+    access_point: s.access,
+    pipe_material: s.materials.join(", "),
+    footage_scoped: s.footage,
+    reached_main: s.main,
+    main_note: s.mainnote,
+    summary: s.summary,
+    findings_count: s.findings.length,
+    highest_severity: worstSeverity(),
+    findings_text: findingsText(),
+    video_url: videoUrl(),
+    report_url: s.reportUrl,
+    source: "field-tool",
+    submitted_at: new Date().toISOString()
+  };
+
+  setSend("Sending…", true);
+  fetch(hook, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    state.sentAt = new Date().toISOString();
+    save(); renderSend();
+    toast("Sent to GoHighLevel");
+  }).catch(function(){
+    setSend("That didn’t go through — signal, most likely. Nothing was sent. Try again when you have bars, or text the links to the client and move the stage by hand.", false);
+  });
+};
+
+/* ================= DAY PLANNER =================
+   Ordering uses straight-line distance between city centres, not drive time.
+   It gets the shape of the day right; it will not know about I-696 at 4pm. */
+var BASE = {name:"Novi", lat:42.4806, lng:-83.4755};
+var CITIES = {
+  /* Oakland */
+  "Novi":[42.48,-83.48],"Northville":[42.43,-83.48],"Farmington Hills":[42.49,-83.38],
+  "Farmington":[42.46,-83.38],"Southfield":[42.47,-83.22],"Royal Oak":[42.49,-83.14],
+  "Ferndale":[42.46,-83.13],"Berkley":[42.50,-83.18],"Oak Park":[42.46,-83.18],
+  "Birmingham":[42.55,-83.21],"Troy":[42.60,-83.15],"Rochester Hills":[42.66,-83.15],
+  "Rochester":[42.68,-83.13],"Auburn Hills":[42.69,-83.23],"Pontiac":[42.64,-83.29],
+  "Waterford":[42.66,-83.39],"West Bloomfield":[42.54,-83.38],"Bloomfield Hills":[42.58,-83.25],
+  "Commerce Township":[42.59,-83.49],"Walled Lake":[42.54,-83.48],"Wixom":[42.52,-83.54],
+  "South Lyon":[42.46,-83.65],"Milford":[42.59,-83.60],"Highland":[42.63,-83.62],
+  "White Lake":[42.65,-83.50],"Clarkston":[42.74,-83.42],"Lake Orion":[42.78,-83.24],
+  "Oxford":[42.82,-83.26],"Holly":[42.79,-83.63],"Madison Heights":[42.49,-83.11],
+  "Hazel Park":[42.46,-83.10],"Clawson":[42.53,-83.15],"Beverly Hills":[42.52,-83.22],
+  "Huntington Woods":[42.48,-83.17],"Pleasant Ridge":[42.47,-83.14],"Lathrup Village":[42.50,-83.22],
+  "Keego Harbor":[42.61,-83.35],"Orchard Lake":[42.58,-83.36],
+  /* Wayne */
+  "Detroit":[42.33,-83.05],"Livonia":[42.37,-83.35],"Westland":[42.32,-83.40],
+  "Canton":[42.31,-83.48],"Plymouth":[42.37,-83.47],"Dearborn":[42.32,-83.18],
+  "Dearborn Heights":[42.34,-83.27],"Redford":[42.38,-83.30],"Garden City":[42.33,-83.33],
+  "Inkster":[42.29,-83.31],"Wayne":[42.28,-83.39],"Romulus":[42.22,-83.40],
+  "Taylor":[42.23,-83.27],"Allen Park":[42.26,-83.21],"Lincoln Park":[42.25,-83.18],
+  "Southgate":[42.20,-83.19],"Wyandotte":[42.21,-83.15],"Trenton":[42.14,-83.18],
+  "Riverview":[42.17,-83.19],"Woodhaven":[42.13,-83.24],"Brownstown":[42.10,-83.25],
+  "Flat Rock":[42.10,-83.29],"Grosse Pointe":[42.39,-82.91],"Grosse Pointe Woods":[42.44,-82.90],
+  "Harper Woods":[42.44,-82.93],"Hamtramck":[42.39,-83.05],"Highland Park":[42.41,-83.10],
+  "Belleville":[42.20,-83.49],"Van Buren Township":[42.21,-83.53],"Melvindale":[42.28,-83.18],
+  "Ecorse":[42.25,-83.15],"River Rouge":[42.27,-83.13],"Grosse Ile":[42.13,-83.15],
+  "Rockwood":[42.07,-83.25],"Gibraltar":[42.09,-83.19],
+  /* Macomb */
+  "Warren":[42.49,-83.03],"Sterling Heights":[42.58,-83.03],"Shelby Township":[42.67,-83.03],
+  "Utica":[42.63,-83.03],"Clinton Township":[42.59,-82.92],"Roseville":[42.50,-82.94],
+  "St. Clair Shores":[42.50,-82.89],"Eastpointe":[42.47,-82.96],"Fraser":[42.54,-82.95],
+  "Macomb Township":[42.67,-82.92],"Chesterfield":[42.67,-82.84],"New Baltimore":[42.68,-82.74],
+  "Washington Township":[42.73,-83.04],"Romeo":[42.80,-83.01],"Richmond":[42.81,-82.75],
+  "Armada":[42.84,-82.88],"Mount Clemens":[42.60,-82.88],"Harrison Township":[42.59,-82.81],
+  "Center Line":[42.48,-83.03],"New Haven":[42.73,-82.80],
+  /* Washtenaw */
+  "Ann Arbor":[42.28,-83.74],"Ypsilanti":[42.24,-83.61],"Saline":[42.17,-83.78],
+  "Chelsea":[42.32,-84.02],"Dexter":[42.34,-83.89],"Milan":[42.08,-83.68],
+  "Manchester":[42.15,-84.04],"Whitmore Lake":[42.43,-83.75],"Pittsfield":[42.22,-83.70],
+  /* Livingston */
+  "Brighton":[42.53,-83.78],"Howell":[42.61,-83.93],"Hartland":[42.65,-83.75],
+  "Pinckney":[42.46,-83.95],"Fowlerville":[42.66,-84.07],"Hamburg":[42.45,-83.80],
+  "Green Oak":[42.47,-83.72],
+  /* St. Clair */
+  "Port Huron":[42.97,-82.42],"Marysville":[42.91,-82.49],"St. Clair":[42.82,-82.49],
+  "Marine City":[42.72,-82.49],"Algonac":[42.62,-82.53],"Fort Gratiot":[43.02,-82.45],
+  "Yale":[43.13,-82.80],"Capac":[43.01,-82.93],"Kimball":[42.94,-82.56],"Columbus":[42.86,-82.72]
+};
+var PLAN_KEY = "govy.dayplan.v1";
+var stops = [];
+
+function coordsFor(city){
+  if(!city) return null;
+  var k = Object.keys(CITIES).filter(function(c){
+    return c.toLowerCase() === city.trim().toLowerCase();
+  })[0];
+  return k ? {lat:CITIES[k][0], lng:CITIES[k][1], matched:k} : null;
+}
+function miles(a,b){
+  if(!a||!b) return null;
+  var R=3958.8, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180;
+  var la1=a.lat*Math.PI/180, la2=b.lat*Math.PI/180;
+  var h=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.sin(dLng/2)*Math.sin(dLng/2)*Math.cos(la1)*Math.cos(la2);
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function loadPlan(){
+  try{ stops = JSON.parse(localStorage.getItem(PLAN_KEY)) || []; }catch(e){ stops = []; }
+}
+function savePlan(){
+  try{ localStorage.setItem(PLAN_KEY, JSON.stringify(stops)); }catch(e){}
+}
+
+window.addStop = function(){
+  var addr = document.getElementById("p-address").value.trim();
+  var city = document.getElementById("p-city").value.trim();
+  if(!addr && !city){ toast("Add an address or a city"); return; }
+  var c = coordsFor(city);
+  stops.push({
+    id:"s_"+Date.now(), address:addr, city:city,
+    window: document.getElementById("p-window").value.trim(),
+    lat: c? c.lat : null, lng: c? c.lng : null, known: !!c
+  });
+  document.getElementById("p-address").value="";
+  document.getElementById("p-city").value="";
+  document.getElementById("p-window").value="";
+  savePlan(); renderStops();
+  if(city && !c) toast("City not recognised — order it by hand");
+};
+
+window.removeStop = function(id){
+  stops = stops.filter(function(s){ return s.id!==id; });
+  savePlan(); renderStops();
+};
+window.moveStop = function(id, dir){
+  var i = stops.findIndex(function(s){ return s.id===id; });
+  var j = i+dir;
+  if(i<0 || j<0 || j>=stops.length) return;
+  var t = stops[i]; stops[i]=stops[j]; stops[j]=t;
+  savePlan(); renderStops();
+};
+window.clearPlan = function(){
+  stops = []; savePlan(); renderStops(); toast("Day cleared");
+};
+
+/* Fixed-window stops hold their order by time. Everything else is inserted
+   wherever it adds the fewest miles. */
+window.orderDay = function(){
+  if(stops.length<2){ toast("Add a couple of stops first"); return; }
+  function mins(w){
+    var m = String(w||"").match(/(\d{1,2}):?(\d{2})?\s*(a|p)?/i);
+    if(!m) return null;
+    var h = +m[1], min = m[2] ? +m[2] : 0, ap = (m[3]||"").toLowerCase();
+    if(ap==="p" && h<12) h+=12;
+    if(ap==="a" && h===12) h=0;
+    return h*60+min;
+  }
+  var fixed = stops.filter(function(s){ return mins(s.window)!==null; })
+                   .sort(function(a,b){ return mins(a.window)-mins(b.window); });
+  var loose = stops.filter(function(s){ return mins(s.window)===null; });
+  var route = fixed.slice();
+
+  loose.forEach(function(s){
+    if(!route.length){ route.push(s); return; }
+    var best=0, bestCost=Infinity;
+    for(var i=0;i<=route.length;i++){
+      var prev = i===0 ? BASE : route[i-1];
+      var next = i===route.length ? null : route[i];
+      var d1 = miles(prev, s), d2 = next ? miles(s, next) : 0, d0 = next ? miles(prev,next) : 0;
+      var cost = (d1===null||d2===null) ? 999 : (d1+d2-d0);
+      if(cost < bestCost){ bestCost = cost; best = i; }
+    }
+    route.splice(best,0,s);
+  });
+
+  stops = route; savePlan(); renderStops();
+  toast(fixed.length ? "Ordered around your fixed windows" : "Ordered");
+};
+
+function renderStops(){
+  var wrap = document.getElementById("stop-list");
+  if(!stops.length){
+    wrap.innerHTML = '<div class="empty">No stops yet. Add the day’s jobs and the route sorts itself.</div>';
+    document.getElementById("plan-stats").innerHTML = "";
+    return;
+  }
+  var html = "", prev = BASE, total = 0, longLeg = false;
+  stops.forEach(function(s, i){
+    var leg = miles(prev, s);
+    if(leg!==null){ total += leg; if(leg>30) longLeg = true; }
+    html +=
+      '<div class="finding" style="border-left-color:'+(s.window ? "#C9A227" : "#346CDB")+'">'+
+        '<div class="finding-head">'+
+          '<span class="ft">'+(i+1)+'</span>'+
+          '<strong>'+esc(s.address || s.city)+
+            (s.address && s.city ? ' <span style="font-weight:600;color:#5A6577">'+esc(s.city)+'</span>' : '')+
+            (s.window ? ' <span style="color:#8A6D1F;font-weight:700">'+esc(s.window)+'</span>' : '')+
+          '</strong>'+
+        '</div>'+
+        '<div style="font-size:13.5px;color:#5A6577">'+
+          (leg!==null ? leg.toFixed(0)+" mi from "+(i===0 ? "Novi" : "the last stop")
+                      : "City not recognised — place this one by hand")+
+        '</div>'+
+        '<div style="margin-top:8px;display:flex;gap:10px">'+
+          '<button class="del" onclick="moveStop(\''+s.id+'\',-1)">Up</button>'+
+          '<button class="del" onclick="moveStop(\''+s.id+'\',1)">Down</button>'+
+          '<button class="del" onclick="removeStop(\''+s.id+'\')">Remove</button>'+
+        '</div>'+
+      '</div>';
+    if(s.lat) prev = s;
+  });
+  wrap.innerHTML = html;
+
+  var stats = "About "+total.toFixed(0)+" miles straight-line across "+stops.length+" stops, "+
+              "starting from Novi. Real driving runs roughly a quarter longer.";
+  if(longLeg) stats += "<br><b>One leg is over 30 miles.</b> That’s most of an hour each way — worth checking it earns its place in the day.";
+  stats += '<br><button class="del" onclick="clearPlan()" style="margin-top:8px">Clear the day</button>';
+  document.getElementById("plan-stats").innerHTML = stats;
+}
+
+window.openMaps = function(){
+  if(!stops.length){ toast("No stops to map"); return; }
+  function q(s){ return encodeURIComponent((s.address? s.address+", ":"")+(s.city||"")+", MI"); }
+  var url = "https://www.google.com/maps/dir/?api=1&origin="+encodeURIComponent("Novi, MI")+
+            "&destination="+q(stops[stops.length-1]);
+  if(stops.length>1){
+    url += "&waypoints="+stops.slice(0,-1).map(q).join("%7C");
+  }
+  url += "&travelmode=driving";
+  window.open(url,"_blank");
+};
+
+function fillCityList(){
+  var dl = document.getElementById("city-list");
+  dl.innerHTML = Object.keys(CITIES).sort().map(function(c){
+    return '<option value="'+c+'">';
+  }).join("");
+}
+
+/* ---------- boot ---------- */
+var all = loadAll();
+if(all.length){ state = all[0]; }
+loadPlan(); fillCityList();
+bindMeta(); fillMeta(); renderPresets();
+})();
+</script>
+</body>
+</html>
