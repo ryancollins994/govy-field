@@ -315,22 +315,19 @@
         </div>
       </div>
       <div class="field">
-        <label for="n-note">What it looks like</label>
-        <textarea id="n-note" placeholder="Plain description of what the camera shows. No repair advice."></textarea>
+        <label for="n-note">What it looks like — or paste your findings</label>
+        <textarea id="n-note" style="min-height:104px" placeholder="Describe what the camera shows, using the fields above.
+
+Or paste several at once, one per line:
+32 | Offset joint | Notable | 2:14 | minor separation
+46 | Root intrusion | Significant | 3:02 | fine roots at the joint"></textarea>
       </div>
       <div class="field">
         <label for="n-photo">Still frame (optional)</label>
         <input type="file" id="n-photo" accept="image/*" capture="environment">
       </div>
-      <button class="btn full" onclick="addFinding()">Add finding</button>
-
-      <div class="field" style="margin-top:18px">
-        <label for="bulk">Or paste findings from your recording</label>
-        <textarea id="bulk" placeholder="32 | Offset joint | Notable | minor separation, light infiltration
-46 | Root intrusion | Significant | fine roots across the joint, partial flow restriction"></textarea>
-      </div>
-      <button class="btn quiet full" onclick="addBulk()">Add these findings</button>
-      <p class="hint">One per line: footage, condition, severity, note — separated by <b>|</b>. Anything you leave off is filled in with a sensible default.</p>
+      <button class="btn full" id="add-btn" onclick="addFinding()">Add finding</button>
+      <p class="hint" id="add-hint">Pick a condition above and describe it, or paste a block of lines and they all get added at once.</p>
 
       <div id="finding-list" style="margin-top:14px"></div>
     </div>
@@ -356,14 +353,29 @@
     <div class="card">
       <h2>Send to client</h2>
       <p class="hint" style="margin:0 0 12px">This hands the job to GoHighLevel: it updates the contact, stores both links, and moves the opportunity to Report Delivered, which is what fires the delivery email and the review ask. You don’t write anything.</p>
-      <div class="field">
-        <label for="hook-url">Report Delivered webhook URL</label>
-        <input type="url" id="hook-url" inputmode="url" autocapitalize="off" autocomplete="off" placeholder="https://services.leadconnectorhq.com/hooks/...">
-        <p class="hint" style="margin-top:6px">Entered once per device and kept only on this phone — never saved into the file, so the hosted page carries no secret.</p>
-      </div>
-      <button class="btn quiet full" style="margin-bottom:10px" onclick="saveHook()">Save webhook</button>
       <button class="btn full" id="send-btn" onclick="sendReport()">Send report</button>
       <div id="send-status" class="hint"></div>
+      <details style="margin-top:14px">
+        <summary class="hint" style="cursor:pointer">Webhook settings</summary>
+        <div class="field" style="margin-top:10px">
+          <label for="hook-url">Report Delivered webhook URL</label>
+          <input type="url" id="hook-url" inputmode="url" autocapitalize="off" autocomplete="off">
+          <p class="hint" style="margin-top:6px">Built in, so there's nothing to set up. Only change this if the trigger is rebuilt in GoHighLevel — then paste the new URL and save, and this device uses that instead.</p>
+        </div>
+        <button class="btn quiet full" onclick="saveHook()">Save webhook</button>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Move this to another device</h2>
+      <p class="hint" style="margin:0 0 12px">Drafts live in this browser only. To carry one between your phone and the laptop, copy the handoff code here and paste it into the box on the other device.</p>
+      <button class="btn quiet full" style="margin-bottom:10px" onclick="copyHandoff()">Copy handoff code</button>
+      <div class="field">
+        <label for="handoff-in">Paste a handoff code</label>
+        <textarea id="handoff-in" placeholder="Paste the code from the other device here" autocapitalize="off" spellcheck="false"></textarea>
+      </div>
+      <button class="btn quiet full" onclick="loadHandoff()">Load it</button>
+      <div id="handoff-status" class="hint"></div>
     </div>
 
     <div class="card">
@@ -513,7 +525,7 @@ function fillMeta(){
   Array.prototype.forEach.call(els, function(el){
     el.value = state[el.getAttribute("data-meta")] || "";
   });
-  renderMaterials(); renderFindings(); renderJobs(); renderSend();
+  renderMaterials(); renderFindings(); renderJobs(); renderSend(); refreshAddButton();
 }
 
 function renderMaterials(){
@@ -572,7 +584,32 @@ function shrink(file, cb){
   reader.readAsDataURL(file);
 }
 
+/* One box does both jobs. A block of lines, or anything with a "|" in it,
+   is a paste from the recording; a single plain sentence is the note for
+   the finding set up in the fields above. */
+function noteLines(){
+  return document.getElementById("n-note").value
+    .split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
+}
+function isBulkEntry(){
+  var lines = noteLines();
+  return lines.length > 1 || (lines.length === 1 && lines[0].indexOf("|") > -1);
+}
+function refreshAddButton(){
+  var btn = document.getElementById("add-btn"), hint = document.getElementById("add-hint");
+  if(!btn) return;
+  if(isBulkEntry()){
+    var n = noteLines().length;
+    btn.textContent = "Add " + n + " finding" + (n===1?"":"s");
+    hint.textContent = "Reading this as a paste: footage, condition, severity, time, note — separated by |. Anything left off gets a sensible default.";
+  } else {
+    btn.textContent = "Add finding";
+    hint.textContent = "Pick a condition above and describe it, or paste a block of lines and they all get added at once.";
+  }
+}
+
 window.addFinding = function(){
+  if(isBulkEntry()){ addBulk(); return; }
   var note = document.getElementById("n-note").value.trim();
   if(!selectedPreset && !note){ toast("Pick a condition or write a note first"); return; }
   state.findings.push({
@@ -590,7 +627,7 @@ window.addFinding = function(){
   document.getElementById("n-footage").value = "";
   document.getElementById("n-time").value = "";
   document.getElementById("n-photo").value = "";
-  renderPresets(); renderFindings(); save();
+  renderPresets(); refreshAddButton(); renderFindings(); save();
   toast("Finding added");
 };
 
@@ -640,6 +677,93 @@ function renderJobs(){
   });
 }
 
+/* ---------- device handoff ----------
+   Drafts live in one browser's storage, so moving a report between the
+   phone and the laptop means carrying it by hand. The code is base64 JSON
+   with a version prefix, small enough to paste into a message or email. */
+var HANDOFF_MAX = 400000;
+
+function encodeHandoff(obj){
+  var bytes = new TextEncoder().encode(JSON.stringify(obj));
+  var bin = "";
+  for(var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+  return "GOVY1:" + btoa(bin);
+}
+function decodeHandoff(code){
+  var raw = String(code).trim().replace(/\s+/g,"");
+  if(raw.indexOf("GOVY1:")!==0) throw new Error("not a Govy handoff code");
+  var bin = atob(raw.slice(6));
+  var bytes = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+function setHandoff(msg){
+  var el = document.getElementById("handoff-status");
+  if(el) el.innerHTML = msg || "";
+}
+
+window.copyHandoff = function(){
+  var photos = state.findings.filter(function(f){ return f.photo; }).length;
+  var code = encodeHandoff(state), dropped = 0;
+
+  if(code.length > HANDOFF_MAX && photos){
+    // Still frames are what make a code too big to paste. Drop them rather
+    // than hand over something that will not survive a text message.
+    var lean = Object.assign({}, state, {
+      findings: state.findings.map(function(f){
+        return Object.assign({}, f, {photo:null});
+      })
+    });
+    code = encodeHandoff(lean);
+    dropped = photos;
+  }
+
+  var kb = Math.round(code.length/1024);
+  function done(){
+    var msg = "Copied — " + kb + " KB. Paste it into the box on the other device.";
+    if(dropped) msg += "<br><b>" + dropped + " still frame" + (dropped===1?"":"s") +
+      " left behind</b> to keep the code pasteable. Re-attach them on the other device if the report needs them.";
+    if(kb > 50) msg += "<br>That is large for a text message — email it to yourself instead.";
+    setHandoff(msg);
+    toast("Handoff code copied");
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(done, function(){ fallbackCopy(code, done); });
+  } else { fallbackCopy(code, done); }
+};
+
+function fallbackCopy(text, done){
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); done(); }
+  catch(e){ setHandoff("This browser blocked the copy. Select the code manually from the paste box instead."); }
+  document.body.removeChild(ta);
+}
+
+window.loadHandoff = function(){
+  var raw = document.getElementById("handoff-in").value;
+  if(!raw.trim()){ setHandoff("Paste a code first."); return; }
+  var incoming;
+  try{ incoming = decodeHandoff(raw); }
+  catch(e){ setHandoff("That does not look like a Govy handoff code. Copy the whole thing, starting with GOVY1:."); return; }
+  if(!incoming || typeof incoming !== "object" || !("findings" in incoming)){
+    setHandoff("That code is missing the inspection data."); return;
+  }
+  incoming.findings = incoming.findings || [];
+  incoming.materials = incoming.materials || [];
+  incoming.id = incoming.id || ("job_"+Date.now());
+  // sentAt does not travel: the other device may not have sent it yet.
+  incoming.sentAt = null;
+  state = incoming;
+  document.getElementById("handoff-in").value = "";
+  fillMeta(); renderPresets(); save();
+  setHandoff("Loaded " + (state.address || "the inspection") + " with " +
+             state.findings.length + " finding" + (state.findings.length===1?"":"s") + ".");
+  toast("Inspection loaded");
+  window.scrollTo(0,0);
+};
+
 window.newJob = function(){
   state = blank(); selectedPreset=null; pendingPhoto=null;
   fillMeta(); renderPresets(); save();
@@ -647,8 +771,8 @@ window.newJob = function(){
 };
 
 /* ---------- views ---------- */
-window.addBulk = function(){
-  var raw = document.getElementById("bulk").value;
+function addBulk(){
+  var raw = document.getElementById("n-note").value;
   var lines = raw.split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
   if(!lines.length){ toast("Nothing to add"); return; }
   var SEVS = ["Normal","Monitor","Notable","Significant"];
@@ -699,8 +823,11 @@ window.addBulk = function(){
   });
 
   state.findings.sort(function(a,b){ return (parseFloat(a.footage)||0) - (parseFloat(b.footage)||0); });
-  document.getElementById("bulk").value = "";
-  renderFindings(); save();
+  document.getElementById("n-note").value = "";
+  document.getElementById("n-footage").value = "";
+  document.getElementById("n-time").value = "";
+  selectedPreset = null;
+  renderPresets(); refreshAddButton(); renderFindings(); save();
   toast(added+(added===1 ? " finding added" : " findings added"));
 };
 
@@ -894,8 +1021,13 @@ window.copySummary = function(){
    browser storage — deliberately NOT written into this file, which is
    served publicly wherever it is hosted. */
 var HOOK_KEY = "govy.webhook.v1";
+/* The Report Delivered webhook in the Govy sub-account. Baked in so the tool
+   works on any device with no setup. Anyone who reads this file can POST to
+   it, which would create junk contacts at $0.01 a go — if that ever happens,
+   regenerate the trigger in GHL and paste the new URL in the override below. */
+var DEFAULT_HOOK = "https://services.leadconnectorhq.com/hooks/0HTCkESe5buNyuqALPUx/webhook-trigger/9a221cc2-75c2-490d-9b93-59ea10fad3d0";
 function getHook(){
-  try{ return localStorage.getItem(HOOK_KEY) || ""; }catch(e){ return ""; }
+  try{ return localStorage.getItem(HOOK_KEY) || DEFAULT_HOOK; }catch(e){ return DEFAULT_HOOK; }
 }
 window.saveHook = function(){
   var v = document.getElementById("hook-url").value.trim();
@@ -944,7 +1076,7 @@ function renderSend(){
 window.sendReport = function(){
   var s = state, hook = getHook();
   if(!hook){
-    setSend("Not connected yet. Paste the Report Delivered webhook URL in the box above and save it — it stays on this device.", false);
+    setSend("No webhook configured. Open Webhook settings below and paste the Report Delivered URL.", false);
     return;
   }
   if(!s.email && !s.phone){ setSend("Add the client’s email or phone first — GoHighLevel needs one to find the contact.", false); return; }
@@ -1199,7 +1331,8 @@ function fillCityList(){
 var all = loadAll();
 if(all.length){ state = all[0]; }
 loadPlan(); fillCityList();
-bindMeta(); fillMeta(); renderPresets();
+bindMeta(); fillMeta(); renderPresets(); refreshAddButton();
+document.getElementById("n-note").addEventListener("input", refreshAddButton);
 })();
 </script>
 </body>
